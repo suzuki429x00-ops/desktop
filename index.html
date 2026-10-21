@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>放課後ターミナル</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="受験生のための Claude Code 講座。日本語で頼むだけで、単語テストや復習スケジュールを自分用に作れるようになる全8回のオンライン講座です。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: 方眼ノートの紙面に、マークシートの楕円と蛍光マーカーを道具として使う。ヒーローは左に見出し、右に実際のターミナル。 */
+:root {
+  --paper: #f4f7f6;
+  --paper-2: #ffffff;
+  --ink: #18222e;
+  --ink-2: #4b5766;
+  --rule: #d3dcdf;
+  --grid: rgba(24, 34, 46, 0.055);
+  --sheet: #cf4f68;          /* マークシートの印刷インク */
+  --sheet-soft: rgba(207, 79, 104, 0.10);
+  --hl: #ffe24a;             /* 蛍光マーカー */
+  --hl-band: rgba(255, 226, 74, 0.85);
+  --btn-bg: #18222e;
+  --btn-fg: #f4f7f6;
+  --term-bg: #141a22;
+  --term-edge: #141a22;
+  --term-fg: #dbe3ec;
+  --term-dim: #7f8d9e;
+  --term-ok: #79d39c;
+  --term-key: #ffd84a;
+
+  --f-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --f-body: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --f-mono: "JetBrains Mono", "BIZ UDGothic", ui-monospace, "Menlo", monospace;
+
+  --s-xs: 0.8125rem;
+  --s-sm: 0.9375rem;
+  --s-md: 1.0625rem;
+  --s-lg: 1.375rem;
+  --s-xl: clamp(1.6rem, 1.1rem + 2vw, 2.25rem);
+  --s-hero: clamp(2.1rem, 1.2rem + 4.2vw, 3.9rem);
+
+  --wrap: 72rem;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11161c; --paper-2: #18202a; --ink: #e6ecf2; --ink-2: #a3afbd; --rule: #2a3440;
+    --grid: rgba(230, 236, 242, 0.04); --sheet: #ee7d93; --sheet-soft: rgba(238, 125, 147, 0.12);
+    --hl: #f0cf3a; --hl-band: rgba(240, 207, 58, 0.32); --btn-bg: #f0cf3a; --btn-fg: #11161c;
+    --term-bg: #0b0f14; --term-edge: #2a3440;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #11161c; --paper-2: #18202a; --ink: #e6ecf2; --ink-2: #a3afbd; --rule: #2a3440;
+  --grid: rgba(230, 236, 242, 0.04); --sheet: #ee7d93; --sheet-soft: rgba(238, 125, 147, 0.12);
+  --hl: #f0cf3a; --hl-band: rgba(240, 207, 58, 0.32); --btn-bg: #f0cf3a; --btn-fg: #11161c;
+  --term-bg: #0b0f14; --term-edge: #2a3440;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--s-md);
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--sheet); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+
+.wrap {
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.hl { background: linear-gradient(transparent 58%, var(--hl-band) 58%, var(--hl-band) 92%, transparent 92%); padding-inline: 0.08em; }
+
+/* ---------- header ---------- */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper); }
+.site-head {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+}
+.site-head .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 0.7rem; }
+.logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; font-family: var(--f-display); font-size: 1.1rem; letter-spacing: 0.02em; }
+.logo-mark { font-family: var(--f-mono); font-size: 0.8rem; font-weight: 600; background: var(--term-bg); color: var(--term-key); padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid var(--term-edge); }
+.nav { display: flex; align-items: center; gap: 1.4rem; font-size: var(--s-sm); }
+.nav a:not(.btn) { text-decoration: none; color: var(--ink-2); }
+.nav a:not(.btn):hover { color: var(--ink); }
+@media (max-width: 760px) { .nav a:not(.btn) { display: none; } }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center;
+  font-family: var(--f-body); font-weight: 700; font-size: var(--s-sm);
+  background: var(--btn-bg); color: var(--btn-fg);
+  border: 2px solid var(--btn-bg); border-radius: 999px;
+  padding: 0.6rem 1.3rem; text-decoration: none; cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
+.btn.small { padding: 0.4rem 1rem; }
+
+/* ---------- hero ---------- */
+.hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(2rem, 4vw, 4rem); align-items: center; padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 6vw, 5rem); }
+.hero .wrap > * { min-width: 0; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } }
+.eyebrow { font-size: var(--s-xs); font-weight: 700; letter-spacing: 0.14em; color: var(--sheet); display: inline-flex; align-items: center; gap: 0.5rem; }
+.eyebrow::before { content: ""; width: 0.75em; height: 1.15em; border: 1.5px solid var(--sheet); border-radius: 50%; }
+.hero h1 { font-family: var(--f-display); font-weight: 400; font-size: var(--s-hero); line-height: 1.32; letter-spacing: 0.01em; margin-top: 1rem; }
+.hero-lead { margin-top: 1.4rem; max-width: 34em; color: var(--ink-2); }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 2rem; }
+.hero-facts { display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem; margin-top: 2rem; padding: 0; list-style: none; font-size: var(--s-sm); color: var(--ink-2); }
+.hero-facts b { color: var(--ink); font-family: var(--f-mono); font-weight: 600; }
+
+/* terminal */
+.term {
+  background: var(--term-bg); color: var(--term-fg);
+  border: 1px solid var(--term-edge); border-radius: 12px;
+  font-family: var(--f-mono); font-size: 0.82rem; line-height: 1.75;
+  box-shadow: 0 24px 48px -24px rgba(10, 16, 24, 0.45);
+  overflow: hidden;
+}
+.term-bar { display: flex; align-items: center; gap: 0.4rem; padding: 0.65rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.07); color: var(--term-dim); font-size: 0.72rem; }
+.term-bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.16); }
+.term-bar span { margin-left: 0.5rem; }
+.term-body { padding: 1rem 1.1rem 1.2rem; overflow-x: auto; }
+.term-body p { white-space: pre-wrap; word-break: break-word; }
+.t-dim { color: var(--term-dim); }
+.t-ok { color: var(--term-ok); }
+.t-key { color: var(--term-key); }
+.t-ask { border-left: 2px solid var(--term-key); padding-left: 0.8rem; margin-block: 0.6rem; }
+.cursor { display: inline-block; width: 0.55em; height: 1.1em; background: var(--term-fg); vertical-align: text-bottom; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.term-note { margin-top: 0.8rem; font-size: var(--s-xs); color: var(--ink-2); }
+
+/* ---------- section scaffold ---------- */
+section.block { padding-block: clamp(3.5rem, 7vw, 6rem); border-top: 1px solid var(--rule); }
+.sec-head { display: grid; gap: 0.8rem; max-width: 44rem; margin-bottom: clamp(2rem, 4vw, 3rem); }
+.sec-head h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--s-xl); line-height: 1.45; }
+.sec-head p { color: var(--ink-2); }
+
+/* ---------- for whom (mark-sheet list) ---------- */
+.checks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule); }
+@media (max-width: 700px) { .checks { grid-template-columns: 1fr; } }
+.checks li { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start; padding: 1.2rem 0.4rem; border-bottom: 1px solid var(--rule); }
+.checks li:nth-child(odd) { padding-right: 1.6rem; }
+.bubble { width: 1.1rem; height: 1.7rem; border: 1.6px solid var(--sheet); border-radius: 50%; flex: none; margin-top: 0.15rem; position: relative; }
+.bubble.on { background: var(--ink); border-color: var(--ink); }
+.checks b { display: block; font-size: var(--s-md); }
+.checks span { color: var(--ink-2); font-size: var(--s-sm); }
+
+/* ---------- why ---------- */
+.why { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.5rem, 3vw, 2.5rem); }
+@media (max-width: 860px) { .why { grid-template-columns: 1fr; } }
+.why article { display: grid; gap: 0.6rem; align-content: start; }
+.why .tag { font-family: var(--f-mono); font-size: var(--s-xs); color: var(--sheet); font-weight: 600; }
+.why h3 { font-size: var(--s-lg); line-height: 1.5; }
+.why p { color: var(--ink-2); font-size: var(--s-sm); }
+
+/* ---------- projects ---------- */
+.projects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.4rem; }
+@media (max-width: 960px) { .projects { grid-template-columns: 1fr; max-width: 34rem; } }
+.proj { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px; display: grid; grid-template-rows: auto 1fr; overflow: hidden; }
+.proj-shot { border-bottom: 1px solid var(--rule); padding: 1.1rem; min-height: 11.5rem; display: grid; align-content: center; font-size: var(--s-xs); }
+.proj-body { padding: 1.2rem 1.3rem 1.4rem; display: grid; gap: 0.5rem; align-content: start; }
+.proj-body h3 { font-size: var(--s-lg); }
+.proj-body p { color: var(--ink-2); font-size: var(--s-sm); }
+.proj-body .ask { font-family: var(--f-mono); font-size: 0.78rem; color: var(--ink); background: var(--sheet-soft); border-radius: 6px; padding: 0.55rem 0.7rem; line-height: 1.6; }
+.proj-body .ask::before { content: "> "; color: var(--sheet); font-weight: 600; }
+
+/* mock: vocab quiz */
+.mock-quiz { display: grid; gap: 0.6rem; }
+.mock-quiz .q { font-family: var(--f-mono); font-size: 1.15rem; font-weight: 600; }
+.mock-quiz .meta { color: var(--ink-2); display: flex; justify-content: space-between; }
+.mock-quiz .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.mock-quiz .opts span { border: 1px solid var(--rule); border-radius: 6px; padding: 0.3rem 0.5rem; }
+.mock-quiz .opts span.right { border-color: var(--ink); font-weight: 700; }
+/* mock: review schedule */
+.mock-cal { display: grid; grid-template-columns: 4.6rem repeat(7, minmax(0, 1fr)); gap: 3px; font-variant-numeric: tabular-nums; }
+.mock-cal div { height: 1.45rem; border-radius: 3px; display: grid; place-items: center; }
+.mock-cal .h { color: var(--ink-2); }
+.mock-cal .r { justify-content: start; color: var(--ink); white-space: nowrap; overflow: hidden; }
+.mock-cal .c { background: var(--grid); }
+.mock-cal .c.d1 { background: var(--hl-band); }
+.mock-cal .c.d2 { background: var(--sheet-soft); outline: 1px solid var(--sheet); outline-offset: -1px; }
+/* mock: score chart */
+.mock-chart svg { width: 100%; height: auto; display: block; }
+.mock-chart text { fill: var(--ink-2); font-family: var(--f-mono); font-size: 9px; }
+.mock-chart .axis { stroke: var(--rule); }
+.mock-chart .line { fill: none; stroke: var(--ink); stroke-width: 2; }
+.mock-chart .goal { stroke: var(--sheet); stroke-dasharray: 4 3; stroke-width: 1.2; }
+.mock-chart .dot { fill: var(--paper-2); stroke: var(--ink); stroke-width: 2; }
+.mock-chart .dot.last { fill: var(--hl); }
+
+/* ---------- curriculum ---------- */
+.curri { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 3rem; counter-reset: lesson; }
+@media (max-width: 820px) { .curri { grid-template-columns: 1fr; } }
+.phase { display: grid; gap: 0; align-content: start; }
+.phase-title { font-family: var(--f-mono); font-size: var(--s-xs); font-weight: 600; letter-spacing: 0.08em; color: var(--ink-2); padding-bottom: 0.6rem; border-bottom: 2px solid var(--ink); }
+.lesson { display: grid; grid-template-columns: 4.2rem 1fr; gap: 1rem; padding: 1.1rem 0; border-bottom: 1px solid var(--rule); }
+.lesson .no { font-family: var(--f-display); font-size: 1.05rem; color: var(--sheet); line-height: 1.6; white-space: nowrap; }
+.lesson h3 { font-size: var(--s-md); line-height: 1.6; }
+.lesson p { color: var(--ink-2); font-size: var(--s-sm); margin-top: 0.2rem; }
+.curri-note { margin-top: 1.6rem; font-size: var(--s-sm); color: var(--ink-2); }
+
+/* ---------- rules (promise) ---------- */
+.promise { background: var(--term-bg); color: var(--term-fg); border-radius: 14px; padding: clamp(1.6rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: clamp(1.5rem, 4vw, 3.5rem); border: 1px solid var(--term-edge); }
+@media (max-width: 820px) { .promise { grid-template-columns: 1fr; } }
+.promise h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--s-xl); line-height: 1.45; }
+.promise .lead { color: var(--term-dim); margin-top: 1rem; font-size: var(--s-sm); }
+.promise ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 1.1rem; }
+.promise li { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; }
+.promise li code { font-family: var(--f-mono); color: var(--term-key); font-size: 0.85rem; padding-top: 0.15rem; }
+.promise li b { display: block; }
+.promise li span { color: var(--term-dim); font-size: var(--s-sm); }
+
+/* ---------- self check ---------- */
+.diag { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); overflow: hidden; }
+@media (max-width: 860px) { .diag { grid-template-columns: 1fr; } }
+.diag-sheet { padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: 1.4rem; border-right: 1px solid var(--rule); }
+@media (max-width: 860px) { .diag-sheet { border-right: 0; border-bottom: 1px solid var(--rule); } }
+.diag fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.diag legend { font-weight: 700; padding: 0; margin-bottom: 0.4rem; }
+.diag legend .qn { font-family: var(--f-mono); color: var(--sheet); margin-right: 0.5rem; }
+.opts-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1rem; }
+@media (max-width: 480px) { .opts-row { grid-template-columns: 1fr; } }
+.opt { display: flex; align-items: center; gap: 0.7rem; cursor: pointer; font-size: var(--s-sm); padding: 0.25rem 0; }
+.opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.opt .bubble { margin-top: 0; display: grid; place-items: center; font-family: var(--f-mono); font-size: 0.62rem; color: var(--sheet); transition: background 0.15s; }
+.opt input:checked + .bubble { background: var(--ink); border-color: var(--ink); color: transparent; }
+.opt input:focus-visible + .bubble { outline: 3px solid var(--sheet); outline-offset: 2px; }
+.diag-result { padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: 0.8rem; align-content: start; background: var(--sheet-soft); }
+.diag-result .label { font-family: var(--f-mono); font-size: var(--s-xs); letter-spacing: 0.1em; color: var(--sheet); font-weight: 600; }
+.diag-result h3 { font-family: var(--f-display); font-weight: 400; font-size: var(--s-lg); line-height: 1.5; }
+.diag-result p { font-size: var(--s-sm); color: var(--ink-2); }
+.diag-result ul { margin: 0; padding-left: 1.2em; font-size: var(--s-sm); color: var(--ink-2); }
+
+/* ---------- plans ---------- */
+.plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem; }
+@media (max-width: 820px) { .plans { grid-template-columns: 1fr; } }
+.plan { border: 1px solid var(--rule); background: var(--paper-2); border-radius: 10px; padding: clamp(1.3rem, 3vw, 2rem); display: grid; gap: 1rem; align-content: start; }
+.plan.main { border: 2px solid var(--ink); }
+.plan-top { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.plan h3 { font-size: var(--s-lg); }
+.chip { font-size: var(--s-xs); font-weight: 700; padding: 0.15rem 0.7rem; border-radius: 999px; background: var(--hl); color: #18222e; }
+.price { font-family: var(--f-mono); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.price small { font-family: var(--f-body); font-size: var(--s-xs); color: var(--ink-2); font-weight: 400; margin-left: 0.3rem; }
+.spec { margin: 0; display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem 1rem; font-size: var(--s-sm); border-top: 1px solid var(--rule); padding-top: 1rem; }
+.spec dt { color: var(--ink-2); }
+.spec dd { margin: 0; }
+.reqs { margin-top: 1.6rem; border: 1.5px dashed var(--sheet); border-radius: 10px; padding: 1.2rem 1.4rem; display: grid; gap: 0.5rem; font-size: var(--s-sm); }
+.reqs b { color: var(--sheet); }
+.reqs ul { margin: 0; padding-left: 1.2em; color: var(--ink-2); }
+
+/* ---------- parents ---------- */
+.parents { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: clamp(1.5rem, 4vw, 4rem); }
+@media (max-width: 820px) { .parents { grid-template-columns: 1fr; } }
+.parents dl { margin: 0; display: grid; gap: 1.3rem; }
+.parents dt { font-weight: 700; }
+.parents dd { margin: 0.25rem 0 0; color: var(--ink-2); font-size: var(--s-sm); }
+
+/* ---------- faq ---------- */
+.faq { display: grid; gap: 0; border-top: 1px solid var(--rule); max-width: 52rem; }
+.faq details { border-bottom: 1px solid var(--rule); }
+.faq summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 3rem 1fr auto; gap: 0.6rem; align-items: baseline; padding: 1.1rem 0.2rem; font-weight: 700; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .qn { font-family: var(--f-mono); color: var(--sheet); font-weight: 600; font-size: var(--s-sm); }
+.faq summary::after { content: "+"; font-family: var(--f-mono); color: var(--ink-2); font-size: 1.2rem; }
+.faq details[open] summary::after { content: "−"; }
+.faq .ans { padding: 0 0.2rem 1.3rem 3.6rem; color: var(--ink-2); font-size: var(--s-sm); }
+@media (max-width: 480px) { .faq .ans { padding-left: 0.2rem; } }
+
+/* ---------- apply ---------- */
+.apply { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: start; }
+@media (max-width: 860px) { .apply { grid-template-columns: 1fr; } }
+.steps { list-style: none; padding: 0; margin: 1.6rem 0 0; display: grid; gap: 1rem; counter-reset: step; }
+.steps li { counter-increment: step; display: grid; grid-template-columns: 2rem 1fr; gap: 0.8rem; font-size: var(--s-sm); color: var(--ink-2); }
+.steps li::before { content: counter(step); font-family: var(--f-mono); font-weight: 600; color: var(--btn-fg); background: var(--btn-bg); width: 1.7rem; height: 1.7rem; border-radius: 50%; display: grid; place-items: center; font-size: 0.8rem; }
+.steps b { color: var(--ink); display: block; }
+form.entry { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 10px; padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: 1.1rem; }
+.field { display: grid; gap: 0.35rem; }
+.field label, .field .lbl { font-weight: 700; font-size: var(--s-sm); }
+.field .req { color: var(--sheet); font-size: var(--s-xs); margin-left: 0.4rem; }
+.field input[type="text"], .field input[type="email"], .field select, .field textarea {
+  font: inherit; font-size: var(--s-sm); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 0.6rem 0.75rem; width: 100%;
+}
+.field textarea { min-height: 5.5rem; resize: vertical; }
+.radios { display: flex; flex-wrap: wrap; gap: 0.4rem 1.4rem; }
+.field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+.form-msg { font-size: var(--s-sm); border-radius: 6px; padding: 0.8rem 1rem; background: var(--sheet-soft); }
+.form-msg.ok { background: var(--hl-band); color: var(--ink); }
+
+/* ---------- footer ---------- */
+footer { border-top: 1px solid var(--rule); padding-block: 2.4rem 3rem; font-size: var(--s-xs); color: var(--ink-2); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 1rem 2rem; justify-content: space-between; }
+footer p + p { margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="logo" href="#top"><span class="logo-mark">&gt;_</span>放課後ターミナル</a>
+    <nav class="nav" aria-label="ページ内">
+      <a href="#curriculum">カリキュラム</a>
+      <a href="#plans">受講プラン</a>
+      <a href="#parents">保護者の方へ</a>
+      <a href="#faq">よくある質問</a>
+      <a class="btn small" href="#apply">説明会に申し込む</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">受験生のための Claude Code 講座</span>
+        <h1>勉強の道具を、<br><span class="hl">自分で作れる</span><br>受験生になる。</h1>
+        <p class="hero-lead">Claude Code は、日本語で頼むとパソコンの中でプログラムを書いて動かしてくれる AI です。この講座では、間違えた単語だけ出る小テストや、模試の成績グラフを、自分の勉強に合わせて作れるようになるまで一緒に進めます。プログラミング経験は要りません。</p>
+        <div class="hero-cta">
+          <a class="btn" href="#apply">無料説明会に申し込む</a>
+          <a class="btn ghost" href="#curriculum">カリキュラムを見る</a>
+        </div>
+        <ul class="hero-facts">
+          <li>全<b>8</b>回</li>
+          <li>1回<b>60</b>分・オンライン</li>
+          <li>週1回／春休み集中</li>
+          <li>プログラミング経験 <b>不要</b></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="term" role="img" aria-label="Claude Code に英単語の小テスト作成を頼んでいる画面の例">
+          <div class="term-bar"><i></i><i></i><i></i><span>~/juken — claude</span></div>
+          <div class="term-body">
+            <p><span class="t-dim">~/juken $</span> claude</p>
+            <p class="t-ask"><span class="t-key">&gt;</span> 単語帳の words.csv から、前回まちがえた単語だけを20問出す小テストを作って。3回連続で正解した単語は出題リストから外して。</p>
+            <p><span class="t-dim">●</span> words.csv を読み込みました <span class="t-dim">(1,900 語)</span></p>
+            <p><span class="t-dim">●</span> quiz.py を作成しました</p>
+            <p><span class="t-dim">●</span> まちがえた単語と連続正解数を mistakes.json に記録します</p>
+            <p><span class="t-dim">●</span> 試しに5問で動かしました <span class="t-ok">✓ 正常に動作</span></p>
+            <p>&nbsp;</p>
+            <p><span class="t-dim">次から:</span> <span class="t-key">python quiz.py</span></p>
+            <p><span class="t-dim">~/juken $</span> <span class="cursor" aria-hidden="true"></span></p>
+          </div>
+        </div>
+        <p class="term-note">第3回の授業で実際に作る小テストの頼み方です。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOR WHOM ===== -->
+  <section class="block" id="for">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">こんな受験生に</span>
+        <h2>ひとつでも当てはまったら、<br>この講座が役に立ちます。</h2>
+      </div>
+      <ul class="checks">
+        <li><span class="bubble on" aria-hidden="true"></span><div><b>市販の単語アプリが自分の単語帳に合わない</b><span>使っている単語帳の範囲と順番で、苦手な語だけを回したい。</span></div></li>
+        <li><span class="bubble on" aria-hidden="true"></span><div><b>共通テストの「情報Ⅰ」が少し不安</b><span>プログラムを読む問題に、実際に動くコードを見た経験で慣れておきたい。</span></div></li>
+        <li><span class="bubble on" aria-hidden="true"></span><div><b>総合型選抜で「自分で作ったもの」を見せたい</b><span>志望理由と結びつく小さな成果物を、自分の手で作りたい。</span></div></li>
+        <li><span class="bubble on" aria-hidden="true"></span><div><b>AI を使ってみたいけど、何から始めればいいかわからない</b><span>チャットで質問する以上の使い方を、ルールを守って身につけたい。</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== WHY ===== -->
+  <section class="block" id="why">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">なぜ受験生のうちに</span>
+        <h2>受験にも、その先にも<br>つながる3つの理由</h2>
+      </div>
+      <div class="why">
+        <article>
+          <span class="tag">共通テスト 情報Ⅰ</span>
+          <h3>読むだけだったコードが、動くものになる</h3>
+          <p>2025年度入試から共通テストに「情報Ⅰ」が加わりました。授業では、AI が書いたコードを毎回一緒に読み、どこで何をしているかを言葉で説明する練習をします。</p>
+        </article>
+        <article>
+          <span class="tag">総合型・学校推薦型</span>
+          <h3>「作ったもの」が、面接で話せる経験になる</h3>
+          <p>最終回では自分の課題を解く道具を1つ仕上げ、何に困って、どう頼み、何を直したかを1枚にまとめます。そのまま活動報告の材料に使えます。</p>
+        </article>
+        <article>
+          <span class="tag">大学入学後</span>
+          <h3>レポートや研究で、AI を道具として使える</h3>
+          <p>データの集計やグラフ作成は、どの学部でも必要になります。AI に任せていいことと、自分で確かめるべきことの線引きを、入学前に身につけます。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PROJECTS ===== -->
+  <section class="block" id="projects">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">講座で作るもの</span>
+        <h2>毎日の勉強で、<br>そのまま使える3つの道具</h2>
+        <p>どれも Claude Code に日本語で頼んで作ります。下の灰色の枠は、実際の授業での頼み方の例です。</p>
+      </div>
+      <div class="projects">
+        <article class="proj">
+          <div class="proj-shot" aria-hidden="true">
+            <div class="mock-quiz">
+              <div class="meta"><span>第12問 / 20</span><span>連続正解 ●●○</span></div>
+              <div class="q">inevitable</div>
+              <div class="opts"><span>一時的な</span><span class="right">避けられない</span><span>目に見えない</span><span>計り知れない</span></div>
+            </div>
+          </div>
+          <div class="proj-body">
+            <h3>苦手だけ出る単語テスト</h3>
+            <p>自分の単語帳の範囲から出題し、まちがえた語ほど多く出ます。覚えた語は自動で出題から外れます。</p>
+            <p class="ask">ターゲットの1001〜1200番から、間違えた単語を優先して出して</p>
+          </div>
+        </article>
+        <article class="proj">
+          <div class="proj-shot" aria-hidden="true">
+            <div class="mock-cal">
+              <div class="h"></div><div class="h">月</div><div class="h">火</div><div class="h">水</div><div class="h">木</div><div class="h">金</div><div class="h">土</div><div class="h">日</div>
+              <div class="r">数ⅡB 大問3</div><div class="c d1"></div><div class="c d2"></div><div class="c"></div><div class="c"></div><div class="c d2"></div><div class="c"></div><div class="c"></div>
+              <div class="r">化学 平衡</div><div class="c"></div><div class="c d1"></div><div class="c d2"></div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c d2"></div>
+              <div class="r">古文 助動詞</div><div class="c"></div><div class="c"></div><div class="c d1"></div><div class="c d2"></div><div class="c"></div><div class="c"></div><div class="c"></div>
+              <div class="r">英長文 第4問</div><div class="c"></div><div class="c"></div><div class="c"></div><div class="c d1"></div><div class="c d2"></div><div class="c"></div><div class="c"></div>
+            </div>
+          </div>
+          <div class="proj-body">
+            <h3>過去問の復習スケジュール</h3>
+            <p>解いた日を入れると、翌日・3日後・1週間後の復習日を割り振ります。黄色が初回、赤枠が復習日です。</p>
+            <p class="ask">解いた大問を記録したら、1日後・3日後・7日後に復習する予定表を作って</p>
+          </div>
+        </article>
+        <article class="proj">
+          <div class="proj-shot mock-chart" aria-hidden="true">
+            <svg viewBox="0 0 260 140" role="presentation">
+              <line class="axis" x1="34" y1="16" x2="34" y2="116"></line>
+              <line class="axis" x1="34" y1="116" x2="250" y2="116"></line>
+              <text x="28" y="19" text-anchor="end">70</text>
+              <text x="28" y="69" text-anchor="end">60</text>
+              <text x="28" y="119" text-anchor="end">50</text>
+              <line class="goal" x1="34" y1="41" x2="250" y2="41"></line>
+              <text x="248" y="36" text-anchor="end">志望校 65.0</text>
+              <polyline class="line" points="50,96 104,86 158,71 212,55"></polyline>
+              <circle class="dot" cx="50" cy="96" r="4"></circle>
+              <circle class="dot" cx="104" cy="86" r="4"></circle>
+              <circle class="dot" cx="158" cy="71" r="4"></circle>
+              <circle class="dot last" cx="212" cy="55" r="5"></circle>
+              <text x="50" y="132" text-anchor="middle">5月</text>
+              <text x="104" y="132" text-anchor="middle">7月</text>
+              <text x="158" y="132" text-anchor="middle">8月</text>
+              <text x="212" y="132" text-anchor="middle">10月</text>
+              <text x="212" y="46" text-anchor="middle">62.2</text>
+            </svg>
+          </div>
+          <div class="proj-body">
+            <h3>模試の偏差値グラフ</h3>
+            <p>模試の結果を表に入れるだけで、科目ごとの推移と志望校の目安を1枚のグラフにします。</p>
+            <p class="ask">模試の結果の表から、英数国の偏差値の推移を折れ線グラフにして</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CURRICULUM ===== -->
+  <section class="block" id="curriculum">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">カリキュラム</span>
+        <h2>全8回で、頼み方から<br>自分の道具づくりまで</h2>
+        <p>前半で道具の使い方を、後半で自分の課題を解く道具づくりを進めます。各回のあとの宿題は15分以内です。</p>
+      </div>
+      <div class="curri">
+        <div class="phase">
+          <div class="phase-title">前半 ── 道具に慣れる</div>
+          <div class="lesson"><span class="no">第1回</span><div><h3>Claude Code を動かしてみる</h3><p>インストールと初期設定。フォルダとファイルの考え方を知り、最初のお願いをします。</p></div></div>
+          <div class="lesson"><span class="no">第2回</span><div><h3>伝わる頼み方を覚える</h3><p>目的・材料・条件の3つを伝える練習。あいまいな頼み方と結果の違いを比べます。</p></div></div>
+          <div class="lesson"><span class="no">第3回</span><div><h3>単語テストを作る</h3><p>CSV ファイルを読み込み、まちがえた語を記録する小テストを完成させます。</p></div></div>
+          <div class="lesson"><span class="no">第4回</span><div><h3>AI が書いたコードを読む</h3><p>第3回のコードを1行ずつ説明します。情報Ⅰのプログラム問題の読み方にもつなげます。</p></div></div>
+        </div>
+        <div class="phase">
+          <div class="phase-title">後半 ── 自分の道具を作る</div>
+          <div class="lesson"><span class="no">第5回</span><div><h3>復習スケジュールを作る</h3><p>日付の計算と表の出力。思った通りに動かないとき、どう直してもらうかを練習します。</p></div></div>
+          <div class="lesson"><span class="no">第6回</span><div><h3>成績をグラフにする</h3><p>模試の結果をグラフ化します。グラフの数字が元の表と合っているかを自分で確かめます。</p></div></div>
+          <div class="lesson"><span class="no">第7回</span><div><h3>自分の課題で設計する</h3><p>自分の勉強で困っていることを1つ選び、作る道具の仕様を1枚に書きます。</p></div></div>
+          <div class="lesson"><span class="no">第8回</span><div><h3>完成と振り返り</h3><p>道具を仕上げて発表します。困ったこと・頼み方・直したことを成果シートにまとめます。</p></div></div>
+        </div>
+      </div>
+      <p class="curri-note">各回の録画は受講期間中いつでも見直せます。欠席した回は録画と個別質問でフォローします。</p>
+    </div>
+  </section>
+
+  <!-- ===== PROMISE ===== -->
+  <section class="block" id="rules">
+    <div class="wrap">
+      <div class="promise">
+        <div>
+          <span class="eyebrow">この講座のルール</span>
+          <h2 style="margin-top:0.8rem">AI に勉強を<br>代わってもらう講座では<br>ありません。</h2>
+          <p class="lead">道具を作るのは AI と一緒でも、覚えるのも解くのも自分です。初回の授業で、次の4つを全員で確認します。</p>
+        </div>
+        <ol>
+          <li><code>rule.1</code><div><b>宿題・課題・志望理由書を AI に書かせない</b><span>学校や大学のルールに反する使い方はしません。授業でも扱いません。</span></div></li>
+          <li><code>rule.2</code><div><b>AI の答えは、必ず自分で確かめる</b><span>AI はまちがえることがあります。出てきた数字や説明は、元の資料と照らし合わせます。</span></div></li>
+          <li><code>rule.3</code><div><b>個人情報や他人の答案を入れない</b><span>名前・住所・友だちの成績などは扱いません。模試の結果も自分の分だけを使います。</span></div></li>
+          <li><code>rule.4</code><div><b>勉強時間を削って作らない</b><span>1回60分と15分の宿題に収めます。道具づくりが目的にならないよう、講師が進み具合を見ます。</span></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SELF CHECK ===== -->
+  <section class="block" id="check">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">30秒でわかる</span>
+        <h2>あなたに合う受講プランは？</h2>
+        <p>マークシートを塗るように、当てはまるものを1つずつ選んでください。</p>
+      </div>
+      <form class="diag" id="diag" onsubmit="return false">
+        <div class="diag-sheet">
+          <fieldset>
+            <legend><span class="qn">問1</span>受験本番までの期間は？</legend>
+            <div class="opts-row">
+              <label class="opt"><input type="radio" name="time" id="time-1" value="short"><span class="bubble">1</span>半年未満</label>
+              <label class="opt"><input type="radio" name="time" id="time-2" value="mid" checked><span class="bubble">2</span>半年〜1年</label>
+              <label class="opt"><input type="radio" name="time" id="time-3" value="long"><span class="bubble">3</span>1年以上</label>
+              <label class="opt"><input type="radio" name="time" id="time-4" value="done"><span class="bubble">4</span>受験は終わった</label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend><span class="qn">問2</span>パソコンはどのくらい使う？</legend>
+            <div class="opts-row">
+              <label class="opt"><input type="radio" name="pc" id="pc-1" value="0"><span class="bubble">1</span>ほとんど使わない</label>
+              <label class="opt"><input type="radio" name="pc" id="pc-2" value="1" checked><span class="bubble">2</span>調べものや文書作成</label>
+              <label class="opt"><input type="radio" name="pc" id="pc-3" value="2"><span class="bubble">3</span>Excel で表を作れる</label>
+              <label class="opt"><input type="radio" name="pc" id="pc-4" value="3"><span class="bubble">4</span>プログラムを書いたことがある</label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend><span class="qn">問3</span>いちばん作ってみたいものは？</legend>
+            <div class="opts-row">
+              <label class="opt"><input type="radio" name="want" id="want-1" value="quiz" checked><span class="bubble">1</span>単語テスト</label>
+              <label class="opt"><input type="radio" name="want" id="want-2" value="plan"><span class="bubble">2</span>復習スケジュール</label>
+              <label class="opt"><input type="radio" name="want" id="want-3" value="chart"><span class="bubble">3</span>成績グラフ</label>
+              <label class="opt"><input type="radio" name="want" id="want-4" value="none"><span class="bubble">4</span>まだ決まっていない</label>
+            </div>
+          </fieldset>
+        </div>
+        <div class="diag-result" aria-live="polite">
+          <span class="label">判定</span>
+          <h3 id="res-title">週1コースがおすすめ</h3>
+          <p id="res-body">受験まで時間があるので、週1回60分のペースで勉強と並行して進められます。</p>
+          <ul id="res-list"></ul>
+          <a class="btn small" href="#apply" style="justify-self:start;margin-top:0.4rem">説明会で相談する</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== PLANS ===== -->
+  <section class="block" id="plans">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">受講プラン</span>
+        <h2>勉強のペースに合わせて<br>2つから選べます</h2>
+      </div>
+      <div class="plans">
+        <article class="plan main">
+          <div class="plan-top"><h3>週1コース</h3><span class="chip">高2・高3前半向け</span></div>
+          <!-- 受講料は確定後に書き換えてください -->
+          <div class="price">◯◯,◯◯◯円<small>（税込・全8回）</small></div>
+          <dl class="spec">
+            <dt>期間</dt><dd>8週間（週1回）</dd>
+            <dt>時間</dt><dd>平日 20:00〜21:00 または 土曜 10:00〜11:00</dd>
+            <dt>形式</dt><dd>オンライン（Zoom）・1クラス8名まで</dd>
+            <dt>サポート</dt><dd>授業録画、チャットでの質問（翌日までに回答）</dd>
+          </dl>
+        </article>
+        <article class="plan">
+          <div class="plan-top"><h3>春休み集中コース</h3><span class="chip">受験が終わった方向け</span></div>
+          <div class="price">◯◯,◯◯◯円<small>（税込・全8回）</small></div>
+          <dl class="spec">
+            <dt>期間</dt><dd>4日間（1日2回）</dd>
+            <dt>時間</dt><dd>13:00〜14:00、14:30〜15:30</dd>
+            <dt>形式</dt><dd>オンライン（Zoom）・1クラス8名まで</dd>
+            <dt>サポート</dt><dd>授業録画、修了後2週間のチャット質問</dd>
+          </dl>
+        </article>
+      </div>
+      <div class="reqs">
+        <b>受講に必要なもの</b>
+        <ul>
+          <li>Windows または Mac のパソコン（タブレット・スマートフォンでは受講できません）</li>
+          <li>Claude の有料プランのアカウント（受講料には含まれません）</li>
+          <li>Claude の利用規約により、アカウントを作れるのは18歳以上の方です。18歳未満の方は、説明会で受講方法をご相談ください。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PARENTS ===== -->
+  <section class="block" id="parents">
+    <div class="wrap parents">
+      <div class="sec-head" style="margin-bottom:0">
+        <span class="eyebrow">保護者の方へ</span>
+        <h2>受験勉強の妨げにならないよう、<br>設計しています。</h2>
+        <p>説明会には保護者の方だけでもご参加いただけます。</p>
+      </div>
+      <dl>
+        <div><dt>週の負担は75分まで</dt><dd>授業60分と宿題15分です。模試や定期試験の週は宿題をなくし、録画での後日受講に切り替えられます。</dd></div>
+        <div><dt>AI の使い方のルールを最初に決めます</dt><dd>課題の代筆をしない、答えを自分で確かめる、個人情報を入れない。この3点を初回に確認し、毎回の授業で守られているかを講師が見ます。</dd></div>
+        <div><dt>費用は受講料と Claude の利用料です</dt><dd>Claude の有料プランは月単位で契約・解約できます。受講期間だけの契約で問題ありません。教材費などの追加費用はかかりません。</dd></div>
+        <div><dt>修了時に成果シートをお渡しします</dt><dd>何を作り、どこでつまずき、どう解決したかを1枚にまとめたものです。お子さまの取り組みを確認する材料にお使いください。</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section class="block" id="faq">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">よくある質問</span>
+        <h2>受講前によく聞かれること</h2>
+      </div>
+      <div class="faq">
+        <details open>
+          <summary><span class="qn">問1</span>プログラミングをしたことがなくても大丈夫ですか？</summary>
+          <p class="ans">大丈夫です。コードは Claude Code が書くので、最初からプログラミング言語を覚える必要はありません。そのかわり、書かれたコードを読んで説明する練習を毎回します。</p>
+        </details>
+        <details>
+          <summary><span class="qn">問2</span>Claude Code とは何ですか？</summary>
+          <p class="ans">Anthropic 社が提供している、パソコン上で動く AI です。日本語で頼むと、ファイルを読み、プログラムを書き、実際に動かして結果を確かめるところまで進めてくれます。ChatGPT のようなチャットとの違いは、自分のパソコンのファイルを直接扱える点です。</p>
+        </details>
+        <details>
+          <summary><span class="qn">問3</span>どんなパソコンが必要ですか？</summary>
+          <p class="ans">Windows または Mac で、インターネットにつながるものなら使えます。学校から配られた Chromebook など、ソフトを入れられない端末では受講できない場合があります。説明会で端末を確認します。</p>
+        </details>
+        <details>
+          <summary><span class="qn">問4</span>高校3年生の秋からでも間に合いますか？</summary>
+          <p class="ans">受験本番まで半年を切っている場合は、受験が終わってからの春休み集中コースをおすすめしています。大学入学前に身につけておくと、入学後のレポートや実験データの整理にすぐ使えます。</p>
+        </details>
+        <details>
+          <summary><span class="qn">問5</span>授業を欠席したらどうなりますか？</summary>
+          <p class="ans">すべての回を録画しています。録画を見たあと、わからなかったところをチャットで質問できます。</p>
+        </details>
+        <details>
+          <summary><span class="qn">問6</span>作ったものは受講後も使えますか？</summary>
+          <p class="ans">はい。作ったファイルはすべて自分のパソコンに残ります。Claude の契約を終えたあとも、完成したプログラム自体はそのまま動かせます。</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== APPLY ===== -->
+  <section class="block" id="apply">
+    <div class="wrap apply">
+      <div>
+        <div class="sec-head" style="margin-bottom:0">
+          <span class="eyebrow">無料説明会</span>
+          <h2>まずは45分の説明会で、<br>実際の画面を見てください。</h2>
+          <p>講師が目の前で単語テストを作ります。受講するかどうかは、そのあとで決めて大丈夫です。</p>
+        </div>
+        <ol class="steps">
+          <li><div><b>フォームから申し込む</b>希望の形式と時間帯を選んでください。</div></li>
+          <li><div><b>日程のご案内が届く</b>2日以内に、メールで説明会の日時と参加用のリンクをお送りします。</div></li>
+          <li><div><b>説明会に参加する</b>デモを見たあと、パソコンの確認と受講プランの相談をします。</div></li>
+        </ol>
+      </div>
+
+      <form class="entry" id="entry" novalidate>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-name">お名前<span class="req">必須</span></label>
+            <input type="text" id="f-name" name="name" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="f-grade">学年</label>
+            <select id="f-grade" name="grade">
+              <option>高校1年生</option>
+              <option selected>高校2年生</option>
+              <option>高校3年生</option>
+              <option>既卒生</option>
+              <option>保護者</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-mail">メールアドレス<span class="req">必須</span></label>
+          <input type="email" id="f-mail" name="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <span class="lbl" id="f-slot-lbl">希望の時間帯</span>
+          <div class="radios" role="radiogroup" aria-labelledby="f-slot-lbl">
+            <label class="opt"><input type="radio" name="slot" id="f-slot-1" value="平日夜" checked><span class="bubble"></span>平日の夜</label>
+            <label class="opt"><input type="radio" name="slot" id="f-slot-2" value="土曜午前"><span class="bubble"></span>土曜の午前</label>
+            <label class="opt"><input type="radio" name="slot" id="f-slot-3" value="日曜午後"><span class="bubble"></span>日曜の午後</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-note">聞いてみたいこと（任意）</label>
+          <textarea id="f-note" name="note" placeholder="例：使っているパソコンは学校配布の Windows です"></textarea>
+        </div>
+        <button class="btn" type="submit">説明会に申し込む</button>
+        <p class="form-msg" id="form-msg" hidden></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p><b>放課後ターミナル</b> ── 受験生のための Claude Code 講座</p>
+      <p>Claude および Claude Code は Anthropic 社の製品です。本講座は Anthropic 社が運営・提供するものではありません。</p>
+    </div>
+    <p>© 2026 放課後ターミナル</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // ----- 受講プラン診断 -----
+  var diag = document.getElementById("diag");
+  var title = document.getElementById("res-title");
+  var body = document.getElementById("res-body");
+  var list = document.getElementById("res-list");
+  var wants = {
+    quiz: "第3回の単語テストを、自分の単語帳の範囲で作るところから始めましょう。",
+    plan: "第5回の復習スケジュールは、過去問演習が始まる時期に特に役立ちます。",
+    chart: "第6回の成績グラフは、模試の結果が3回分あれば作れます。",
+    none: "第7回で、自分の勉強の困りごとから作るものを一緒に決めます。"
+  };
+  function val(name) {
+    var el = diag.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : "";
+  }
+  function update() {
+    var time = val("time"), pc = Number(val("pc")), want = val("want");
+    var items = [];
+    if (time === "short") {
+      title.textContent = "受験後の春休み集中コースがおすすめ";
+      body.textContent = "本番まで半年を切っているので、今は受験勉強に集中しましょう。受験が終わったら4日間で全8回を受講できます。";
+    } else if (time === "done") {
+      title.textContent = "春休み集中コースがおすすめ";
+      body.textContent = "時間のある今のうちに、4日間でまとめて身につけられます。大学入学前の準備にちょうどよい長さです。";
+    } else {
+      title.textContent = "週1コースがおすすめ";
+      body.textContent = time === "long"
+        ? "受験まで1年以上あるので、週1回60分で無理なく進められます。作った道具を受験勉強で長く使えます。"
+        : "週1回60分なら、勉強と並行して進められます。模試の週は録画受講に切り替えられます。";
+    }
+    items.push(wants[want] || wants.none);
+    if (pc === 0) items.push("パソコン操作に慣れていなくても、第1回でファイルの扱い方から説明します。");
+    if (pc === 3) items.push("プログラム経験があれば、第7回で少し大きめの道具に挑戦できます。");
+    list.innerHTML = "";
+    items.forEach(function (t) { var li = document.createElement("li"); li.textContent = t; list.appendChild(li); });
+  }
+  diag.addEventListener("change", update);
+  update();
+
+  // ----- 説明会フォーム -----
+  // 送信先（メール配信サービスやフォームサービス）が決まったら、ここで送信処理を追加してください。
+  var form = document.getElementById("entry");
+  var msg = document.getElementById("form-msg");
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = form.elements.name.value.trim();
+    var mail = form.elements.email.value.trim();
+    msg.hidden = false;
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      msg.className = "form-msg";
+      msg.textContent = !name ? "お名前を入力してください。" : "メールアドレスを正しく入力してください（例：taro@example.com）。";
+      (!name ? form.elements.name : form.elements.email).focus();
+      return;
+    }
+    msg.className = "form-msg ok";
+    msg.textContent = name + " さん、入力内容を確認しました。このページはまだ送信先につながっていないため、申し込みは届いていません。";
+  });
+})();
+</script>
+</body>
+</html>
